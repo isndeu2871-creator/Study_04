@@ -15,8 +15,20 @@ from pathlib import Path
 import requests
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-TEXT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
-VISION_MODEL = "google/gemma-4-26b-a4b-it:free"
+# 1번이 수업에서 선정한 모델. 404/429 로 막히면 예비 모델로 넘어감(노트 6.2.4.5/6.2.4.6).
+TEXT_MODELS = [
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "cohere/north-mini-code:free",
+    "minimax/minimax-m3:free",
+]
+VISION_MODELS = [
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3.5-super-vl:free",
+    "dots-studio/dots-3-note-preview:free",
+    "google/gemma-4-31b-it:free",
+]
+TEXT_MODEL = TEXT_MODELS[0]
+VISION_MODEL = VISION_MODELS[0]
 
 
 def load_env(path=".env"):
@@ -99,15 +111,33 @@ def ask(api_key, model, messages, timeout=120, retries=3):
     raise RuntimeError("재시도를 모두 썼습니다.")
 
 
+def ask_with_fallback(api_key, models, messages):
+    """차례대로 시도하고, 404/429 면 다음 예비 모델로 넘어감. (쓴 모델, 답) 을 돌려줌."""
+    last = None
+    for index, model in enumerate(models):
+        label = "선정 모델" if index == 0 else f"예비 {index}"
+        print(f"   [{label}] {model}")
+        try:
+            return model, ask(api_key, model, messages)
+        except requests.HTTPError as error:
+            status = error.response.status_code if error.response is not None else 0
+            print(f"      건너뜀 — {explain_http_error(status).split('.')[0]}")
+            last = error
+            if status not in (404, 429):
+                raise
+    raise last
+
+
 def test_text(api_key):
-    print(f"\n[1] 텍스트 모델 시험 — {TEXT_MODEL}")
+    print("\n[1] 텍스트 모델 시험")
     prompt = (
         "다음 문장에서 재료를 뽑아 JSON 으로만 답하세요. "
         '형식: {"ingredients": ["...", "..."]}. 설명은 쓰지 마세요.\n'
         "문장: 냉장고에 달걀 3개, 우유 반 통, 시금치 한 봉지가 있어."
     )
-    answer = ask(api_key, TEXT_MODEL, [{"role": "user", "content": prompt}])
-    print("응답 원문:", answer.strip()[:300])
+    used, answer = ask_with_fallback(api_key, TEXT_MODELS, [{"role": "user", "content": prompt}])
+    print(f"   쓴 모델: {used}")
+    print("   응답 원문:", answer.strip()[:300])
 
     cleaned = answer.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     try:
@@ -133,7 +163,7 @@ def make_test_image():
 
 
 def test_vision(api_key):
-    print(f"\n[2] 멀티모달 모델 시험 — {VISION_MODEL}")
+    print("\n[2] 멀티모달 모델 시험")
     try:
         encoded = make_test_image()
     except ImportError:
@@ -155,8 +185,9 @@ def test_vision(api_key):
             ],
         }
     ]
-    answer = ask(api_key, VISION_MODEL, messages)
-    print("응답 원문:", answer.strip()[:300])
+    used, answer = ask_with_fallback(api_key, VISION_MODELS, messages)
+    print(f"   쓴 모델: {used}")
+    print("   응답 원문:", answer.strip()[:300])
 
     text = answer.lower()
     ok = ("원" in answer or "circle" in text) and ("빨" in answer or "red" in text)

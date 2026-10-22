@@ -132,3 +132,39 @@ API를 통한 텍스트와 이미지 인식을 각각 테스트해서 실행 결
 | `run_test.bat` | 윈도에서 더블클릭으로 시험을 실행하는 파일 |
 
 `.env` 는 이 목록에 없음. 각자 본인 컴퓨터에서 만들고 깃허브에는 올리지 않음.
+
+## 5. 실행 확인 기록 (2026-10-22)
+
+클라우드 세션에서 실제로 호출해 확인한 결과임.
+
+```
+[1] 텍스트 모델 시험
+   [선정 모델] nvidia/nemotron-3-super-120b-a12b:free
+      건너뜀 — 404 모델을 찾을 수 없음
+   [예비 1] cohere/north-mini-code:free
+   응답 원문: {"ingredients": ["eggs", "milk", "spinach"]}
+[성공] JSON 처리 확인
+
+[2] 멀티모달 모델 시험
+   [선정 모델] google/gemma-4-26b-a4b-it:free
+      건너뜀 — 429 일시적 요청 제한
+   [예비 1] nvidia/nemotron-3.5-super-vl:free
+   응답 원문: 모양: 원형 / 색: 빨간색 (글자는 흰색) / 적힌 글자: AI
+[성공] 그림을 읽었습니다
+```
+
+### 이 날짜 기준 모델 상태
+
+| 모델 | 결과 |
+| --- | --- |
+| `nvidia/nemotron-3-super-120b-a12b:free` | 404 — 목록에는 있으나 제공 업체가 거절 |
+| `google/gemma-4-26b-a4b-it:free` | 429 — 업체 혼잡, 시간이 지나면 풀릴 수 있음 |
+| `cohere/north-mini-code:free` | 정상 |
+| `nvidia/nemotron-3.5-super-vl:free` | 정상 |
+| `dots-studio/dots-3-note-preview:free` | 정상 |
+| `google/gemma-4-31b-it:free` | 429 |
+| `minimax/minimax-m3:free` | 무료 중단, 유료로 바뀜 |
+| `openai/gpt-oss-20b:free` | 무료 중단, 유료로 바뀜 |
+
+목록에 `FREE` 로 보이는 것과 실제로 호출이 되는 것은 다름. 실습일에 이 스크립트를 한 번
+돌려 보는 것이 목록을 눈으로 확인하는 것보다 확실함.
