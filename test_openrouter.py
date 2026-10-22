@@ -17,15 +17,16 @@ import requests
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 # 1번이 수업에서 선정한 모델. 404/429 로 막히면 예비 모델로 넘어감(노트 6.2.4.5/6.2.4.6).
 TEXT_MODELS = [
-    "nvidia/nemotron-3-super-120b-a12b:free",
-    "cohere/north-mini-code:free",
-    "minimax/minimax-m3:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",   # 수업 선정 모델
+    "minimax/minimax-m3.1-flash:free",          # 예비 1 — 1.9초, 정확
+    "openrouter/free",                          # 예비 2 — 1.4초, 정확
+    "cohere/north-mini-code:free",              # 예비 3 — 10.1초, 정확
 ]
 VISION_MODELS = [
-    "google/gemma-4-26b-a4b-it:free",
-    "nvidia/nemotron-3.5-super-vl:free",
-    "dots-studio/dots-3-note-preview:free",
-    "google/gemma-4-31b-it:free",
+    "google/gemma-4-26b-a4b-it:free",           # 수업 선정 모델
+    "minimax/minimax-m3.1-flash:free",          # 예비 1 — 5.4초, 6/6
+    "nvidia/nemotron-3.5-super-vl:free",        # 예비 2 — 12.4초, 6/6
+    "dots-studio/dots-3-note-preview:free",     # 예비 3 — 11.3초, 6/6
 ]
 TEXT_MODEL = TEXT_MODELS[0]
 VISION_MODEL = VISION_MODELS[0]

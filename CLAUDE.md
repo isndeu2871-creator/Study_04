@@ -47,6 +47,14 @@ python3 -c "import test_openrouter as t; t.test_vision(t.get_api_key())"
 - 텍스트: `nvidia/nemotron-3-super-120b-a12b:free`
 - 멀티모달: `google/gemma-4-26b-a4b-it:free`
 
+두 모델 모두 2026-10-22 기준으로 호출이 막혀 있다(각각 404, 429). 그래서 코드는
+`TEXT_MODELS`, `VISION_MODELS` 목록을 차례로 시도하고 404/429 면 예비로 넘어간다.
+선정 모델은 1번 자리에 그대로 두어 살아나면 자동으로 다시 쓰이게 한다.
+예비는 서로 다른 제공 업체로 섞는다. 같은 업체는 함께 막히기 때문이다.
+
+`max_tokens` 를 제한할 때는 1500 이상으로 둔다. 예비 모델 중 추론 모델이 있어
+작게 주면 생각하는 데 다 쓰고 빈 답을 돌려준다.
+
 무료 모델은 목록에서 사라질 수 있다. 호출이 404나 400으로 실패하면 코드를 고치기 전에
 OpenRouter 목록에서 `Prompt pricing`이 `FREE`인 상태로 남아 있는지 먼저 확인한다.
 

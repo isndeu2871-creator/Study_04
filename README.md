@@ -168,3 +168,65 @@ API를 통한 텍스트와 이미지 인식을 각각 테스트해서 실행 결
 
 목록에 `FREE` 로 보이는 것과 실제로 호출이 되는 것은 다름. 실습일에 이 스크립트를 한 번
 돌려 보는 것이 목록을 눈으로 확인하는 것보다 확실함.
+
+## 6. 무료 모델 전수 시험 (2026-10-22)
+
+OpenRouter 무료 모델 21개(텍스트 21, 이미지 12)를 실제로 호출해 시험함.
+
+- 텍스트 과제: 한국어 문장에서 재료 3개를 뽑아 JSON 으로 답하기
+- 이미지 과제: 빨간 원 + 파란 사각형 + `AI 2026` 글자를 읽기 (6점 만점)
+
+### 텍스트 결과 (합격 = JSON + 한국어 + 3개 정확)
+
+| 모델 | 시간 | 결과 |
+| --- | --- | --- |
+| `openrouter/free` | 1.4초 | 합격 |
+| `recursive/flint-v1.0:free` | 1.5초 | 합격 |
+| `poolside/laguna-xs-2.1:free` | 1.9초 | 합격 |
+| `minimax/minimax-m3.1-flash:free` | 1.9초 | 합격 |
+| `nvidia/nemotron-3.5-super-vl:free` | 3.6초 | 합격 |
+| `nvidia/nemotron-3-ultra-550b-a55b:free` | 8.1초 | 합격 |
+| `cohere/north-mini-code:free` | 10.1초 | 합격 |
+| `liquid/lfm-2.5-2.6b:free` | 13.2초 | 합격 |
+| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | 44.4초 | 달걀을 "계산"으로 오인 |
+| `poolside/laguna-s-2.1:free` | 5.4초 | JSON 미완성 |
+| `nvidia/nemotron-3-super-120b-a12b:free` | — | 404 |
+| `google/gemma-4-26b-a4b-it:free`, `google/gemma-4-31b-it:free` | — | 429 |
+| `thinkingmachines/inkling*:free` | — | 403 유료 전용 |
+
+### 이미지 결과
+
+| 모델 | 시간 | 점수 |
+| --- | --- | --- |
+| `minimax/minimax-m3.1-flash:free` | 5.4초 | 6/6 |
+| `openrouter/free` | 8.3초 | 6/6 |
+| `dots-studio/dots-3-note-preview:free` | 11.3초 | 6/6 |
+| `nvidia/nemotron-3.5-super-vl:free` | 12.4초 | 6/6 |
+| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | 36.3초 | 6/6 |
+| `google/gemma-4-26b-a4b-it:free`, `google/gemma-4-31b-it:free` | — | 429 |
+
+### 적용한 차례
+
+`openrouter/free` 는 특정 모델이 아니라 그때그때 알아서 골라주는 라우터임.
+결과를 예측하기 어려워 예비 2번에 둠.
+
+| 구분 | 차례 | 모델 | 이유 |
+| --- | --- | --- | --- |
+| 텍스트 | 1 | `nvidia/nemotron-3-super-120b-a12b:free` | 수업 선정. 지금은 404 지만 살아나면 자동으로 다시 쓰임 |
+|  | 2 | `minimax/minimax-m3.1-flash:free` | 빠르고 정확, 이미지도 됨 |
+|  | 3 | `openrouter/free` | 가장 빠름 |
+|  | 4 | `cohere/north-mini-code:free` | 다른 업체라 같이 막힐 일이 적음 |
+| 이미지 | 1 | `google/gemma-4-26b-a4b-it:free` | 수업 선정. 지금은 429 |
+|  | 2 | `minimax/minimax-m3.1-flash:free` | 가장 빠르고 만점 |
+|  | 3 | `nvidia/nemotron-3.5-super-vl:free` | 만점 |
+|  | 4 | `dots-studio/dots-3-note-preview:free` | 만점 |
+
+예비는 서로 다른 제공 업체로 섞음. 같은 업체는 함께 막히기 때문임
+(이번 시험에서 구글 모델 두 개가 동시에 429 였음).
+
+### 추론 모델 주의
+
+`nemotron-3.5-super-vl`, `dots-3-note-preview`, `openrouter/free` 는 답하기 전에 생각하는
+추론 모델임. `max_tokens` 를 작게 주면 생각하는 데 다 써서 **빈 답**이 돌아옴.
+처음 시험에서 200 으로 주었다가 셋 다 빈 답을 받았고, 1500 으로 올리니 모두 만점이었음.
+`max_tokens` 를 제한할 거라면 1500 이상으로 둘 것.
