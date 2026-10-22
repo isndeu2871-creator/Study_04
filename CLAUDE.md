@@ -19,6 +19,9 @@ python3 -m pip install requests pillow   # 처음 한 번만
 python3 test_openrouter.py               # 키 + 두 모델 연결 시험
 ```
 
+학생은 윈도를 쓴다. 윈도에서는 `python3` 이 아니라 `python` 이고,
+`run_test.bat` 을 더블클릭하는 방법도 있다. 명령을 안내할 때 윈도 쪽을 먼저 적는다.
+
 `test_openrouter.py`는 테스트 프레임워크가 아니라 수동 실행 스크립트다.
 텍스트 시험과 멀티모달 시험을 차례로 돌리고, 둘 다 통과하면 종료 코드 0,
 하나라도 실패하면 1을 돌려준다. 개별 시험만 돌리려면 함수를 직접 호출한다.

@@ -55,8 +55,18 @@ chmod 600 .env
 
 `.env` 를 만든 뒤 아래를 실행함.
 
+**윈도** — 탐색기에서 `run_test.bat` 을 더블클릭하면 설치와 시험을 한 번에 처리함.
+명령 프롬프트에서 직접 치려면 다음과 같이 함.
+
+```
+python -m pip install requests pillow
+python test_openrouter.py
+```
+
+**맥 / 리눅스**
+
 ```bash
-python3 -m pip install requests pillow   # 처음 한 번만
+python3 -m pip install requests pillow
 python3 test_openrouter.py
 ```
 
@@ -66,3 +76,15 @@ python3 test_openrouter.py
 2. 멀티모달 모델에 **도형과 문자**가 그려진 그림을 보내고 제대로 읽어내는지 확인
 
 둘 다 `[성공]` 이 나오면 키와 모델이 정상임.
+
+## 4. 이 저장소의 파일
+
+| 파일 | 역할 |
+| --- | --- |
+| `.gitignore` | 키 파일을 깃허브에 올리지 않게 막는 규칙 |
+| `.env.example` | 키 값을 뺀 변수 이름 견본 |
+| `CLAUDE.md` | 클로드에게 주는 이 폴더의 안내 (응답 언어, 명령, 키 취급 규칙) |
+| `test_openrouter.py` | 키와 두 모델의 연결 시험 |
+| `run_test.bat` | 윈도에서 더블클릭으로 시험을 실행하는 파일 |
+
+`.env` 는 이 목록에 없음. 각자 본인 컴퓨터에서 만들고 깃허브에는 올리지 않음.
