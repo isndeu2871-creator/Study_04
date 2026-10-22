@@ -33,14 +33,22 @@ def load_env(path=".env"):
 
 
 def get_api_key():
+    """키를 찾음. 없으면 None 을 돌려주고, 프록시가 헤더를 붙여주는 환경으로 간주함.
+
+    - 보통(학생 PC): 같은 폴더의 .env 에서 읽음
+    - 클라우드 세션: 네트워크 시크릿이 Authorization 헤더를 대신 붙여주므로 키가 없어도 됨
+    """
     load_env()
     key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    if not key:
-        print("[실패] .env 에서 OPENROUTER_API_KEY 를 찾지 못했습니다.")
-        print("       작업 폴더에 .env 파일이 있는지, 변수 이름이 맞는지 확인하세요.")
-        sys.exit(1)
-    print(f"[확인] 키를 읽었습니다: {key[:10]}...{key[-4:]} (길이 {len(key)})")
-    return key
+    if key:
+        print(f"[확인] 키를 읽었습니다: {key[:10]}...{key[-4:]} (길이 {len(key)})")
+        return key
+    if os.environ.get("HTTPS_PROXY"):
+        print("[확인] .env 는 없지만 프록시가 있습니다. 네트워크 시크릿이 키를 붙여준다고 보고 진행합니다.")
+        return None
+    print("[실패] .env 에서 OPENROUTER_API_KEY 를 찾지 못했습니다.")
+    print("       작업 폴더에 .env 파일이 있는지, 변수 이름이 맞는지 확인하세요.")
+    sys.exit(1)
 
 
 def explain_http_error(status):
@@ -56,7 +64,11 @@ def explain_http_error(status):
             "설정을 바꿔야 풀립니다. 모델 이름 끝에 :free 가 붙어 있는지 확인하세요."
         )
     if status == 401:
-        return "401 인증 실패. .env 의 OPENROUTER_API_KEY 값이 틀렸거나 만료되었습니다."
+        return (
+            "401 인증 실패. 키가 전달되지 않았습니다. "
+            ".env 의 OPENROUTER_API_KEY 값을 확인하세요. "
+            "클라우드 세션이라면 네트워크 시크릿을 저장한 뒤 새 세션에서 다시 실행해야 합니다."
+        )
     if status == 404:
         return (
             "404 모델을 찾을 수 없음. 그 모델이 OpenRouter 목록에서 사라졌을 수 있습니다. "
@@ -69,12 +81,11 @@ def ask(api_key, model, messages, timeout=120, retries=3):
     """429 가 나면 간격을 늘려가며 다시 시도함 (10초, 20초, 40초)."""
     delay = 10
     for attempt in range(1, retries + 1):
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
         response = requests.post(
-            API_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
+            API_URL, headers=headers,
             json={"model": model, "messages": messages},
             timeout=timeout,
         )
