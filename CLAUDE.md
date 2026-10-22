@@ -8,14 +8,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 저장소 성격
 
-대학 수업(6장) 실습용 작업 폴더. OpenRouter의 무료 모델을 쓰는 앱을
-만들기 전, 키를 안전하게 보관하고 모델 연결을 확인하는 준비 단계까지 들어 있다.
-빌드 체계나 패키지 매니페스트는 아직 없고, 단일 스크립트 하나로 구성된다.
+대학 수업(6장) 실습용. 냉장고 사진에서 식재료를 알아보고 레시피를 추천하는
+Streamlit 앱을 3단계로 만든다. 1단계만 구현되어 있다.
+
+| 폴더 | 내용 |
+| --- | --- |
+| `docs/` | 단계별 PRD 세 개. 무엇을 만들지는 여기가 기준이다 |
+| `src/` | `client.py` 모델 호출, `vision.py` 1단계 인식, `app.py` 화면 |
+| `tests/` | 네트워크를 쓰지 않는 시험 |
+| `screenshot/` | 단계별 작동 화면 |
+
+`client.py` 와 `vision.py` 는 Streamlit 에 기대지 않는 순수 모듈이다.
+화면 없이 시험할 수 있어야 하므로 여기에 `import streamlit` 을 넣지 않는다
+(`client.get_api_key` 안의 선택적 import 만 예외).
+
+## 모델 호출 규칙
+
+모든 호출은 `client.call_with_fallback` 을 거친다. 직접 `requests.post` 를 쓰지 않는다.
+이 함수가 세 가지를 맡는다.
+
+1. 429/500/503 이면 10초, 20초 간격으로 3차까지 재시도
+2. 404 등은 재시도 없이 바로 다음 모델
+3. 빈 답이 오면 같은 모델에 토큰을 4배로 주어 한 번 더 시도
+
+3번이 필요한 이유: 예비 모델 중 추론 모델이 있어 `max_tokens` 가 모자라면
+생각하는 데 다 쓰고 빈 답을 돌려준다. 빈 답을 모델 탓으로 넘기기 전에 토큰부터 의심한다.
+
+HTTP 200 인데 `choices` 가 비어 있는 경우가 실제로 있다. 앱이 죽지 않게 한다.
 
 ## 명령
 
 ```bash
-python3 -m pip install requests pillow   # 처음 한 번만
+pip install -r requirements.txt
+streamlit run src/app.py                 # 앱 실행 (localhost:8501)
+python -m pytest tests/ -q               # 시험
 python3 test_openrouter.py               # 키 + 두 모델 연결 시험
 ```
 
