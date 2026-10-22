@@ -109,3 +109,33 @@ def test_generate_falls_back_to_default_models(monkeypatch):
     monkeypatch.setattr(recipe, "call_with_fallback", fake)
     recipe.generate(ITEMS, "한식", "초급", "15분 이내", 2, "key", models=[])
     assert seen["models"] == recipe.TEXT_MODELS
+
+
+# --- 상관없음 (교수님 앱의 선택지) ---
+
+def test_any_is_first_option_everywhere():
+    for options in (recipe.CUISINE_OPTIONS, recipe.DIFFICULTY_OPTIONS,
+                    recipe.TIME_OPTIONS, recipe.SERVING_OPTIONS):
+        assert options[0] == recipe.ANY
+
+
+def test_any_conditions_are_left_out_of_the_prompt():
+    """상관없음을 그대로 넣으면 모델이 그 말을 요리 종류로 읽는다."""
+    text = recipe.build_prompt(ITEMS, recipe.ANY, recipe.ANY, recipe.ANY, recipe.ANY)
+    assert recipe.ANY not in text
+    assert "조건 없음" in text
+
+
+def test_only_chosen_conditions_appear():
+    text = recipe.build_prompt(ITEMS, "중식", recipe.ANY, "15분 이내", recipe.ANY)
+    assert "종류: 중식" in text
+    assert "조리 시간: 15분 이내" in text
+    assert "난이도" not in text
+    assert "인원" not in text
+
+
+def test_normalize_does_not_write_any_into_a_recipe():
+    out = recipe.normalize([{"title": "볶음밥"}], recipe.ANY, recipe.ANY, recipe.ANY)
+    assert out[0]["cuisine"] == ""
+    assert out[0]["difficulty"] == ""
+    assert out[0]["servings"] == 2

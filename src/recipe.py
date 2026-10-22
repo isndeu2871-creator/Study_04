@@ -9,22 +9,36 @@ TEXT_MODELS = [
     "cohere/north-mini-code:free",             # 예비 3
 ]
 
-CUISINE_OPTIONS = ["한식", "양식", "중식", "일식"]
-DIFFICULTY_OPTIONS = ["초급", "중급", "고급"]
-TIME_OPTIONS = ["15분 이내", "30분 이내", "30분 이상"]
-SERVING_OPTIONS = [1, 2, 3, 4]
+ANY = "상관없음"
+
+CUISINE_OPTIONS = [ANY, "한식", "양식", "중식", "일식"]
+DIFFICULTY_OPTIONS = [ANY, "초급", "중급", "고급"]
+TIME_OPTIONS = [ANY, "15분 이내", "30분 이내", "30분 이상"]
+SERVING_OPTIONS = [ANY, 1, 2, 3, 4]
 
 
 def build_prompt(ingredients, cuisine, difficulty, time_limit, servings):
     listed = ", ".join(
         f"{item['name']} {item['quantity']}{item['unit']}" for item in ingredients
     )
+    # `상관없음` 은 조건으로 걸지 않는다. 걸면 모델이 그 말을 요리 종류로 읽는다.
+    conditions = []
+    if cuisine != ANY:
+        conditions.append(f"종류: {cuisine}")
+    if difficulty != ANY:
+        conditions.append(f"난이도: {difficulty}")
+    if time_limit != ANY:
+        conditions.append(f"조리 시간: {time_limit}")
+    if servings != ANY:
+        conditions.append(f"인원: {servings}인분")
+    condition_line = (" / ".join(conditions) + "\n") if conditions else "조건 없음\n"
+
     return (
         "아래 재료로 만들 수 있는 레시피 3개를 JSON 으로만 답하세요.\n"
         "설명이나 인사말 없이 JSON 만 쓰세요.\n"
         "모든 글자는 반드시 한국어로 씁니다. 영어로 쓰지 마세요.\n\n"
         f"재료: {listed}\n"
-        f"종류: {cuisine} / 난이도: {difficulty} / 조리 시간: {time_limit} / 인원: {servings}인분\n\n"
+        f"{condition_line}\n"
         '형식: {"recipes": [{"title": "요리 이름", "cuisine": "한식", '
         '"difficulty": "초급", "time_minutes": 20, "servings": 2, '
         '"used_ingredients": ["..."], "missing_ingredients": ["..."], '
@@ -47,12 +61,16 @@ def normalize(items, cuisine, difficulty, servings):
             minutes = int(float(item.get("time_minutes", 0)))
         except (TypeError, ValueError):
             minutes = 0
+        try:
+            portions = int(item.get("servings") or (servings if servings != ANY else 2))
+        except (TypeError, ValueError):
+            portions = 2
         cleaned.append({
             "title": title,
-            "cuisine": str(item.get("cuisine") or cuisine),
-            "difficulty": str(item.get("difficulty") or difficulty),
+            "cuisine": str(item.get("cuisine") or (cuisine if cuisine != ANY else "")),
+            "difficulty": str(item.get("difficulty") or (difficulty if difficulty != ANY else "")),
             "time_minutes": max(0, minutes),
-            "servings": int(item.get("servings") or servings),
+            "servings": portions,
             "used_ingredients": [str(x) for x in (item.get("used_ingredients") or [])],
             "missing_ingredients": [str(x) for x in (item.get("missing_ingredients") or [])],
             "steps": [str(x) for x in (item.get("steps") or []) if str(x).strip()],
