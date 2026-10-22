@@ -9,6 +9,7 @@ import io
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -42,18 +43,49 @@ def get_api_key():
     return key
 
 
-def ask(api_key, model, messages, timeout=120):
-    response = requests.post(
-        API_URL,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={"model": model, "messages": messages},
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
+def explain_http_error(status):
+    """노트 6.3.4.1목 b.2)의 오류 설명."""
+    if status == 429:
+        return (
+            "429 일시적 요청 제한(Too Many Requests). 무료 모델에 요청이 몰릴 때 납니다. "
+            "키가 잘못된 것이 아니므로 잠시 뒤 다시 실행하면 대개 풀립니다."
+        )
+    if status == 403:
+        return (
+            "403 거절. 키의 사용 한도를 넘었거나, 크레딧 없이 유료 모델을 부른 경우입니다. "
+            "설정을 바꿔야 풀립니다. 모델 이름 끝에 :free 가 붙어 있는지 확인하세요."
+        )
+    if status == 401:
+        return "401 인증 실패. .env 의 OPENROUTER_API_KEY 값이 틀렸거나 만료되었습니다."
+    if status == 404:
+        return (
+            "404 모델을 찾을 수 없음. 그 모델이 OpenRouter 목록에서 사라졌을 수 있습니다. "
+            "openrouter.ai 에서 같은 이름이 FREE 로 남아 있는지 확인하세요."
+        )
+    return f"HTTP {status} 오류."
+
+
+def ask(api_key, model, messages, timeout=120, retries=3):
+    """429 가 나면 간격을 늘려가며 다시 시도함 (10초, 20초, 40초)."""
+    delay = 10
+    for attempt in range(1, retries + 1):
+        response = requests.post(
+            API_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={"model": model, "messages": messages},
+            timeout=timeout,
+        )
+        if response.status_code == 429 and attempt < retries:
+            print(f"      429 요청 제한 — {delay}초 뒤 다시 시도합니다 ({attempt}/{retries - 1})")
+            time.sleep(delay)
+            delay *= 2
+            continue
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    raise RuntimeError("재시도를 모두 썼습니다.")
 
 
 def test_text(api_key):
@@ -128,8 +160,10 @@ def main():
         try:
             results.append((name, func(api_key)))
         except requests.HTTPError as error:
-            body = error.response.text[:200] if error.response is not None else ""
-            print(f"[실패] HTTP {error.response.status_code if error.response else '?'} {body}")
+            status = error.response.status_code if error.response is not None else 0
+            print(f"[실패] {explain_http_error(status)}")
+            if error.response is not None:
+                print(f"       서버 응답: {error.response.text[:200]}")
             results.append((name, False))
         except requests.RequestException as error:
             print(f"[실패] 통신 오류: {error}")
@@ -138,6 +172,8 @@ def main():
     print("\n=== 시험 결과 ===")
     for name, ok in results:
         print(f"{name}: {'성공' if ok else '확인 필요'}")
+    if not all(ok for _, ok in results):
+        print("\n실패한 시험이 429 였다면 잠시 뒤 이 프로그램을 다시 실행하세요.")
     sys.exit(0 if all(ok for _, ok in results) else 1)
 
 
