@@ -245,7 +245,8 @@ OpenRouter 무료 모델 21개(텍스트 21, 이미지 12)를 실제로 호출�
 ### 실행
 
 ```
-pip install -r requirements.txt
+pip install -r requirements.txt       # 앱 실행용
+pip install -r requirements-dev.txt   # 시험까지 돌리려면
 streamlit run src/app.py
 ```
 
@@ -332,3 +333,45 @@ python -m pytest tests/ -q
 - **오인식**: 주황색 `JUICE` 통을 "고기", 다음 시도에서는 "맥주"로 읽었음.
   노트 6.4.9.1목 c.3 의 "무료 모델의 한계" 가 그대로 나타남. 그래서 결과를
   손으로 고칠 수 있게 두는 것이 중요함
+
+## 8. Streamlit Community Cloud 배포 (6.4.8)
+
+### Deploy an app 화면에 넣을 값
+
+| 칸 | 값 |
+| --- | --- |
+| Repository | `isndeu2871-creator/Study_04` |
+| Branch | `claude/loving-rubin-zb0ths` |
+| Main file path | `src/app.py` |
+| App URL | 아직 아무도 안 쓰는 이름 |
+
+### 배포 뒤 Secrets
+
+`Settings` → `Secrets` 에 아래를 넣는다. `.env` 는 깃허브에 올라가지 않으므로
+배포 서버에는 키가 없다. 넣지 않으면 앱은 뜨지만 인식이 실패한다.
+
+```toml
+OPENROUTER_API_KEY = "sk-or-v1-본인키"
+```
+
+Supabase 와 구글 로그인을 쓸 때 더 넣는 값. `[auth]` 아래에 적은 줄은 모두
+`[auth]` 에 속하므로 `DATABASE_URL` 을 그 아래에 두지 않는다.
+
+```toml
+OPENROUTER_API_KEY = "sk-or-v1-본인키"
+DATABASE_URL = "postgresql://..."
+
+[auth]
+redirect_uri = "https://자기앱이름.streamlit.app/oauth2callback"
+cookie_secret = "아무 긴 문자열"
+client_id = "..."
+client_secret = "..."
+server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
+```
+
+### 배포 전 확인한 것
+
+- `.env` 와 프록시가 없는 환경에서도 모듈이 모두 import 되고 앱이 죽지 않음
+- 키가 없으면 화면에 오류를 띄우고 계속 돎
+- `DATABASE_URL` 이 없으면 SQLite, 구글 설정이 없으면 버튼이 비활성
+- `psycopg2-binary` 를 requirements 에 넣어 나중에 Supabase 로 바꿀 때 다시 배포하지 않아도 됨
