@@ -67,8 +67,14 @@ def build_messages(jpeg_bytes):
 
 
 def normalize(items):
-    """모델이 돌려준 목록을 화면이 믿고 쓸 수 있는 모양으로 다듬음."""
+    """모델이 돌려준 목록을 화면이 믿고 쓸 수 있는 모양으로 다듬음.
+
+    같은 이름이 거듭 나오면 수량을 합쳐 하나로 묶는다 (노트 6.4.11.1목).
+    재료마다 고유 `_id` 를 붙인다. 화면 위젯 key 로 순번을 쓰면 가운데 항목을
+    지울 때 엉뚱한 것이 지워진다 (노트 6.4.11.4목).
+    """
     cleaned = []
+    seen = {}
     for item in items:
         if isinstance(item, str):
             item = {"name": item}
@@ -88,11 +94,18 @@ def normalize(items):
         category = str(item.get("category") or "기타").strip()
         if category not in CATEGORIES:
             category = "기타"
-        cleaned.append({"name": name, "quantity": quantity, "unit": unit, "category": category})
+        key = (name, unit)
+        if key in seen:
+            seen[key]["quantity"] += quantity
+            continue
+        entry = {"_id": f"{len(cleaned)}-{name}", "name": name, "quantity": quantity,
+                 "unit": unit, "category": category}
+        seen[key] = entry
+        cleaned.append(entry)
     return cleaned
 
 
-def recognize(image_bytes, api_key, on_event=None):
+def recognize(image_bytes, api_key, models=None, on_event=None):
     """사진에서 식재료를 알아봄.
 
     돌려주는 값: {"ingredients": [...], "model": 쓴 모델, "log": 진행 기록,
@@ -107,7 +120,8 @@ def recognize(image_bytes, api_key, on_event=None):
         )
 
     model, content, log = call_with_fallback(
-        VISION_MODELS, build_messages(jpeg), api_key, max_tokens=4000, on_event=on_event,
+        list(models) if models else VISION_MODELS,
+        build_messages(jpeg), api_key, max_tokens=4000, on_event=on_event,
     )
     data = parse_json(content)
     ingredients = normalize(data.get("ingredients") or [])

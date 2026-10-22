@@ -47,7 +47,9 @@ def test_resize_handles_rgba():
 
 def test_normalize_fills_defaults():
     out = vision.normalize([{"name": "달걀"}])
-    assert out == [{"name": "달걀", "quantity": 1, "unit": "개", "category": "기타"}]
+    assert len(out) == 1
+    assert {k: v for k, v in out[0].items() if k != "_id"} == {
+        "name": "달걀", "quantity": 1, "unit": "개", "category": "기타"}
 
 
 def test_normalize_accepts_plain_strings():
@@ -97,3 +99,37 @@ def test_explain_known_codes():
     assert "인증" in client.explain(401)
     assert "찾을 수 없" in client.explain(404)
     assert "418" in client.explain(418)
+
+
+# --- 중복 병합과 고유 id (노트 6.4.11.1목, 6.4.11.4목) ---
+
+def test_normalize_merges_duplicate_names():
+    out = vision.normalize([
+        {"name": "달걀", "quantity": 3, "unit": "개"},
+        {"name": "달걀", "quantity": 2, "unit": "개"},
+        {"name": "우유", "quantity": 1, "unit": "팩"},
+    ])
+    assert len(out) == 2
+    assert out[0]["name"] == "달걀" and out[0]["quantity"] == 5
+
+
+def test_normalize_keeps_same_name_with_different_unit():
+    out = vision.normalize([
+        {"name": "우유", "quantity": 1, "unit": "팩"},
+        {"name": "우유", "quantity": 500, "unit": "ml"},
+    ])
+    assert len(out) == 2
+
+
+def test_normalize_gives_each_item_a_unique_id():
+    out = vision.normalize([{"name": "달걀"}, {"name": "우유"}, {"name": "사과"}])
+    ids = [item["_id"] for item in out]
+    assert len(set(ids)) == 3
+
+
+def test_deleting_middle_item_by_id_removes_the_right_one():
+    """순번을 key 로 쓰면 가운데를 지울 때 마지막이 지워졌다 (노트 6.4.11.4목)."""
+    items = vision.normalize([{"name": "달걀"}, {"name": "우유"}, {"name": "사과"}])
+    target = items[1]["_id"]
+    items = [i for i in items if i["_id"] != target]
+    assert [i["name"] for i in items] == ["달걀", "사과"]

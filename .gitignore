@@ -16,3 +16,4 @@ venv/
 # 파이썬 / 도구
 .pytest_cache/
 .streamlit/secrets.toml
+data/
